@@ -151,6 +151,19 @@ label.f .inp{margin-top:5px;font-weight:400}
 .modal{align-items:center;justify-content:center;padding:20px;background:rgba(20,24,28,.6)}
 .modal .box{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:380px}
 .modal h2{margin:0 0 4px;font-size:20px}
+.authov{z-index:30;background:var(--paper);align-items:center;justify-content:center;padding:20px;overflow:auto}
+.authov .box{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:400px;box-shadow:0 2px 14px rgba(0,0,0,.08)}
+.authov h2{margin:0 0 2px;font-size:22px}
+.authov p{color:var(--muted);margin:2px 0 12px}
+.authov .seg{margin:10px 0 0}
+.muted{color:var(--muted);font-size:14px}
+.srow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.srow:first-child{border-top:0}
+.srow .btn{min-height:40px;padding:8px 12px}
+.srow .actions{margin:0}
+nav.tabs button{position:relative}
+.nbadge{position:absolute;top:4px;inset-inline-end:calc(50% - 22px);background:var(--red);color:#fff;border-radius:999px;font-size:12px;font-weight:700;min-width:20px;height:20px;display:grid;place-items:center;padding:0 5px}
+details.team summary{cursor:pointer;font-weight:700;padding:6px 0}
 
 /* bottom nav */
 nav.tabs{position:fixed;inset-inline:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px);z-index:10}
@@ -225,16 +238,12 @@ nav.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1
 
   <!-- المراجعة -->
   <section id="v-review" hidden>
-    <div id="rv-login" class="panel" hidden>
-      <h2>دخول المدير</h2>
-      <form id="login-form" autocomplete="on">
-        <label class="f">البريد الإلكتروني<input id="lg-email" class="inp" type="email" autocomplete="username" required></label>
-        <label class="f">كلمة السر<input id="lg-pass" class="inp" type="password" autocomplete="current-password" required></label>
-        <div id="lg-err" class="notice bad" style="margin-top:12px" hidden></div>
-        <button class="btn primary" style="width:100%;margin-top:14px" type="submit" id="lg-btn">دخول</button>
-      </form>
-    </div>
     <div id="rv-main" hidden>
+      <div class="panel" id="req-panel" hidden>
+        <h2>طلبات الانضمام</h2>
+        <p class="muted" style="margin:0 0 4px">وافق فقط على اللي تعرفه.</p>
+        <div id="req-list"></div>
+      </div>
       <div class="seg" id="rv-seg" role="group" aria-label="حالة المراجعة">
         <button type="button" data-rf="pending" aria-pressed="true">بانتظار المراجعة</button>
         <button type="button" data-rf="rejected" aria-pressed="false">يحتاج تصحيح</button>
@@ -244,8 +253,9 @@ nav.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1
       <div class="panel">
         <h2>تصدير لملف Excel</h2>
         <label class="f">الشهر<input id="exp-month" class="inp" type="month"></label>
-        <div class="actions"><button class="btn ghost grow" id="exp-btn" type="button">تنزيل الفحوصات (CSV)</button><button class="btn ghost" id="logout-btn" type="button">تسجيل خروج</button></div>
+        <div class="actions"><button class="btn ghost grow" id="exp-btn" type="button">تنزيل الفحوصات (CSV)</button></div>
       </div>
+      <div class="panel"><details class="team"><summary>الفريق المسموح له بالدخول</summary><div id="team-list"></div></details></div>
     </div>
   </section>
 </main>
@@ -256,7 +266,7 @@ nav.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1
   <button type="button" data-tab="wall">
     <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>المتابعة</button>
   <button type="button" data-tab="review">
-    <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>المراجعة</button>
+    <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>المراجعة<span id="rv-badge" class="nbadge" hidden></span></button>
 </nav>
 
 <!-- شاشة الفحص -->
@@ -292,13 +302,41 @@ nav.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1
   <button class="btn primary" id="d-back" type="button" style="min-width:220px">العودة للقائمة</button>
 </div>
 
-<!-- الاسم -->
-<div id="s-name" class="overlay modal" hidden>
+<!-- الحساب -->
+<div id="s-acct" class="overlay modal" hidden>
   <div class="box">
-    <h2>اسم الفاحص</h2>
-    <p style="margin:0 0 6px;color:var(--muted)">يظهر مع كل فحص تسجله.</p>
-    <input id="n-input" class="inp" type="text" autocomplete="name" placeholder="الاسم بالكامل">
-    <div class="actions"><button class="btn primary grow" id="n-save" type="button">حفظ</button><button class="btn ghost" id="n-cancel" type="button" hidden>إلغاء</button></div>
+    <h2 id="ac-name"></h2>
+    <p class="muted" id="ac-email" style="margin:0 0 14px;direction:ltr;text-align:start"></p>
+    <div class="actions"><button class="btn primary grow" id="ac-out" type="button">تسجيل خروج</button><button class="btn ghost" id="ac-close" type="button">إغلاق</button></div>
+  </div>
+</div>
+
+<!-- الدخول -->
+<div id="s-auth" class="overlay authov" hidden>
+  <div class="box">
+    <h2>فحص المعدات والسلامة</h2>
+    <p id="a-sub">سجّل دخولك للمتابعة.</p>
+    <div id="a-login">
+      <div class="seg" id="a-seg" role="group" aria-label="نوع العملية">
+        <button type="button" data-am="in" aria-pressed="true">دخول</button>
+        <button type="button" data-am="up" aria-pressed="false">حساب جديد</button>
+      </div>
+      <label class="f">البريد الإلكتروني<input id="a-email" class="inp" type="email" autocomplete="username" inputmode="email" style="direction:ltr;text-align:start"></label>
+      <label class="f">كلمة السر<input id="a-pass" class="inp" type="password" autocomplete="current-password" style="direction:ltr;text-align:start"></label>
+      <div id="a-err" class="notice bad" style="margin-top:12px" hidden></div>
+      <button class="btn primary" id="a-go" type="button" style="width:100%;margin-top:14px">دخول</button>
+    </div>
+    <div id="a-join" hidden>
+      <label class="f">الاسم بالكامل<input id="j-name" class="inp" type="text" autocomplete="name"></label>
+      <label class="f">كود الانضمام (من المدير)<input id="j-code" class="inp" type="text" autocapitalize="characters" style="direction:ltr;text-align:start"></label>
+      <div id="j-err" class="notice bad" style="margin-top:12px" hidden></div>
+      <button class="btn primary" id="j-go" type="button" style="width:100%;margin-top:14px">إرسال طلب الانضمام</button>
+    </div>
+    <div id="a-wait" hidden>
+      <div class="notice">تم إرسال طلبك. بانتظار موافقة المدير، وبعدها اضغط «تحديث».</div>
+      <button class="btn primary" id="w-refresh" type="button" style="width:100%;margin-top:14px">تحديث</button>
+    </div>
+    <button class="btn ghost" id="a-out" type="button" style="width:100%;margin-top:10px" hidden>تسجيل خروج</button>
   </div>
 </div>
 
@@ -354,15 +392,16 @@ const isNetErr = e => !navigator.onLine || /fetch|network|load failed|timeout/i.
 let byId = {};                       // آخر فحص لكل طفاية هذا الشهر
 let queue = [];                      // فحوصات محفوظة على الجهاز لم تُرسل
 try { queue = JSON.parse(localStorage.getItem('fe_queue') || '[]'); } catch(e){ queue = []; }
-let inspector = localStorage.getItem('fe_name') || '';
+let me = null;                       // الحساب الحالي بعد الدخول
+const PROFILE_KEY = 'fe_profile';
 const PLANTS = [...new Set(ITEMS.map(x => x.plant))];
 let plant = localStorage.getItem('fe_plant') || 'all';
 if (plant !== 'all' && !PLANTS.includes(plant)) plant = 'all';
 let kind = localStorage.getItem('fe_kind') || 'all';
 if (kind !== 'all' && !KIND_LABEL[kind]) kind = 'all';
 let curGroups = [];
-let flt = 'all', tab = 'list', cur = null, form = {}, photo = null, saving = false, pendingDeep = null;
-let isMgr = false, rvFilter = 'pending';
+let flt = 'all', tab = 'list', cur = null, form = {}, photo = null, saving = false, wantId = '';
+let rvFilter = 'pending';
 
 const saveQueue = () => { try { localStorage.setItem('fe_queue', JSON.stringify(queue)); return true; } catch(e){ return false; } };
 function stateOf(id){ if (queue.some(q => q.ext_id === id)) return 'queued'; const r = byId[id]; return r ? r.status : 'none'; }
@@ -398,7 +437,7 @@ async function send(rec){
     const path = `${rec.ext_id}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`;
     const up = await sb.storage.from('photos').upload(path, blob, { contentType: 'image/jpeg' });
     if (up.error) throw up.error;
-    photo_url = sb.storage.from('photos').getPublicUrl(path).data.publicUrl;
+    photo_url = path;
   }
   const { error } = await sb.from('inspections').insert({
     id: rec.id, ext_id: rec.ext_id, equip_type: rec.equip_type || 'ext', inspect_date: rec.inspect_date, inspector: rec.inspector,
@@ -577,7 +616,7 @@ function compress(file){
 async function save(){
   if (saving) return;
   if (!CONFIGURED) { toast('لم يتم ربط قاعدة البيانات بعد. راجع ملف خطوات التشغيل.'); return; }
-  if (!inspector) { $('s-name').hidden = false; $('n-input').focus(); return; }
+  if (!me) { showAuth(); return; }
   const missing = curGroups.find(f => !form[f.k]);
   if (missing) {
     const g = document.querySelector(`.grp[data-g="${missing.k}"]`);
@@ -588,7 +627,7 @@ async function save(){
   }
   const bad = isBad(), notes = $('i-notes').value.trim(), x = BY_ID[cur];
   if (bad && !notes) { toast('اكتب وصف المشكلة في الملاحظات'); $('i-notes').focus(); return; }
-  const rec = { id: uuid(), ext_id: cur, equip_type: x.kind, inspect_date: $('i-date').value || today(), inspector,
+  const rec = { id: uuid(), ext_id: cur, equip_type: x.kind, inspect_date: $('i-date').value || today(), inspector: me.name,
     result: bad ? 'غير مطابق' : 'مطابق', notes, photo };
   if (x.kind === 'ext') Object.assign(rec, { condition: form.condition, pressure: form.pressure, hose: form.hose, pin: form.pin });
   if (x.checks) rec.checks = curGroups.map(g => ({ q: g.label, a: form[g.k] }));
@@ -618,32 +657,57 @@ async function save(){
 }
 
 /* ---------- المراجعة (المدير) ---------- */
-async function checkManager(){
-  if (!sb) return false;
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) return false;
-  const { data, error } = await sb.rpc('is_manager');
-  return !error && data === true;
+async function signed(paths, secs){
+  const need = [...new Set(paths.filter(p => p && !/^https?:/.test(p)))], map = {};
+  if (need.length && sb) {
+    const { data } = await sb.storage.from('photos').createSignedUrls(need, secs);
+    (data || []).forEach(d => { if (d.signedUrl) map[d.path] = d.signedUrl; });
+  }
+  return p => !p ? '' : (/^https?:/.test(p) ? p : (map[p] || ''));
 }
 async function enterReview(){
-  $('rv-login').hidden = true; $('rv-main').hidden = true;
-  if (!CONFIGURED) { $('rv-login').hidden = false; $('lg-err').hidden = false; $('lg-err').textContent = 'لم يتم ربط قاعدة البيانات بعد.'; return; }
-  isMgr = await checkManager();
-  if (!isMgr) { $('rv-login').hidden = false; $('filters').hidden = true; return; }
+  if (!me || !me.isMgr) { toast('المراجعة للمدير فقط'); showTab('list'); return; }
   $('rv-main').hidden = false;
   $('filters').hidden = false;
   if (!$('exp-month').value) $('exp-month').value = monthStart().slice(0, 7);
+  loadStaff();
   loadReview();
+}
+function staffRow(s, pending){
+  return `<div class="srow" data-email="${esc(s.email)}"><div><b>${esc(s.name)}</b>${s.is_manager ? ' <span class="kpill">مدير</span>' : ''}<div class="muted" style="direction:ltr;text-align:start">${esc(s.email)}</div></div>` +
+    (pending ? '<div class="actions"><button class="btn ok" data-sact="approve" type="button">قبول</button><button class="btn ghost" data-sact="reject" type="button">رفض</button></div>'
+             : (s.is_manager ? '' : '<button class="btn ghost" data-sact="suspend" type="button">إيقاف</button>')) + '</div>';
+}
+function setBadge(n){ const b = $('rv-badge'); b.hidden = !n; b.textContent = n || ''; }
+async function loadStaff(){
+  if (!sb || !me || !me.isMgr) return;
+  const { data, error } = await sb.from('staff').select('email,name,approved,is_manager,created_at').order('created_at', { ascending: false });
+  if (error) return;
+  const pend = data.filter(s => !s.approved), team = data.filter(s => s.approved);
+  $('req-panel').hidden = !pend.length;
+  $('req-list').innerHTML = pend.map(s => staffRow(s, true)).join('');
+  $('team-list').innerHTML = team.length ? team.map(s => staffRow(s, false)).join('') : '<div class="empty">لا أحد بعد.</div>';
+  setBadge(pend.length);
+}
+async function staffAction(email, act){
+  let res;
+  if (act === 'approve') res = await sb.from('staff').update({ approved: true }).eq('email', email).select('email');
+  else if (act === 'suspend') res = await sb.from('staff').update({ approved: false }).eq('email', email).select('email');
+  else res = await sb.from('staff').delete().eq('email', email).select('email');
+  if (res.error || !res.data || !res.data.length) { toast('لم يتم التنفيذ'); return; }
+  toast(act === 'approve' ? 'تم قبول الطلب' : act === 'suspend' ? 'تم إيقاف الحساب' : 'تم رفض الطلب');
+  loadStaff();
 }
 async function loadReview(){
   $('rv-list').innerHTML = '<div class="empty">جارٍ التحميل…</div>';
   let { data, error } = await sb.from('inspections').select('*').eq('status', rvFilter).order('created_at', { ascending: false }).limit(600);
   if (error) { $('rv-list').innerHTML = '<div class="empty">تعذر تحميل البيانات.</div>'; return; }
   data = data.filter(r => { const x = BY_ID[r.ext_id]; return x ? ((plant === 'all' || x.plant === plant) && (kind === 'all' || x.kind === kind)) : (plant === 'all' && kind === 'all'); });
+  const urlOf = await signed(data.map(r => r.photo_url), 3600);
   if (!data.length) { $('rv-list').innerHTML = '<div class="empty">لا توجد فحوصات في هذه القائمة.</div>'; return; }
   $('rv-list').innerHTML = data.map(r => {
     const x = BY_ID[r.ext_id] || { location: '', department: '' };
-    const safeUrl = r.photo_url && /^https:\/\//.test(r.photo_url) ? esc(r.photo_url) : '';
+    const pu = urlOf(r.photo_url), safeUrl = /^https:\/\//.test(pu) ? esc(pu) : '';
     return `<div class="rcard" data-id="${esc(r.id)}">
       <div class="rcard-h"><bdi class="code">${esc(r.ext_id)}</bdi><span style="color:var(--muted);font-size:14px">${esc(r.inspect_date)}</span></div>
       <div class="where">${[x.plant, KIND_LABEL[x.kind], x.location, x.department].filter(Boolean).map(esc).join(' — ')} — الفاحص: ${esc(r.inspector)}</div>
@@ -674,12 +738,13 @@ async function exportCsv(){
   const { data, error } = await sb.from('inspections').select('*').gte('inspect_date', `${m}-01`).lt('inspect_date', ymd(new Date(y, mo, 1))).order('inspect_date').order('created_at');
   if (error) { toast('تعذر تحميل البيانات'); return; }
   if (!data.length) { toast('لا توجد فحوصات في هذا الشهر'); return; }
+  const urlOf = await signed(data.map(r => r.photo_url), 604800);
   const cell = v => { let s = String(v ?? ''); if (/^[=+\-@]/.test(s)) s = "'" + s; return `"${s.replace(/"/g, '""')}"`; };
   const head = ['الكود','نوع المعدة','المصنع','القسم','المكان','الوصف','تاريخ الفحص','الفاحص','النتيجة','الحالة العامة','الضغط','الخرطوم','مسمار الأمان','بنود غير مطابقة','ملاحظات','حالة المراجعة','ملاحظة المراجعة','رابط الصورة'];
   const lines = [head.map(cell).join(',')].concat(data.map(r => {
     const x = BY_ID[r.ext_id] || {};
     const badList = Array.isArray(r.checks) ? r.checks.filter(c => c.a !== 'جيد').map(c => c.q).join(' | ') : '';
-    return [r.ext_id, KIND_LABEL[x.kind] || '', x.plant, x.department, x.location, `${x.type || ''} ${x.weight || ''}`.trim(), r.inspect_date, r.inspector, resultOf(r), r.condition, r.pressure, r.hose, r.pin, badList, r.notes, LABEL[r.status], r.review_note, r.photo_url].map(cell).join(',');
+    return [r.ext_id, KIND_LABEL[x.kind] || '', x.plant, x.department, x.location, `${x.type || ''} ${x.weight || ''}`.trim(), r.inspect_date, r.inspector, resultOf(r), r.condition, r.pressure, r.hose, r.pin, badList, r.notes, LABEL[r.status], r.review_note, urlOf(r.photo_url)].map(cell).join(',');
   }));
   const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `فحص-المعدات-${m}.csv`;
@@ -696,7 +761,7 @@ function bind(){
   $('chips').addEventListener('click', e => { const b = e.target.closest('.fchip'); if (b) { flt = b.dataset.f; renderList(); } });
   $('q').addEventListener('input', renderList);
   $('dept').addEventListener('change', renderList);
-  const afterFilter = () => { $('dept').value = ''; fillDepts(); renderAll(); if (tab === 'review' && isMgr) loadReview(); };
+  const afterFilter = () => { $('dept').value = ''; fillDepts(); renderAll(); if (tab === 'review' && me && me.isMgr) loadReview(); };
   $('plant-seg').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     plant = b.dataset.plant; localStorage.setItem('fe_plant', plant); afterFilter();
@@ -705,7 +770,7 @@ function bind(){
     const b = e.target.closest('.fchip'); if (!b) return;
     kind = b.dataset.kind; localStorage.setItem('fe_kind', kind); afterFilter();
   });
-  ['rows', 'wall', 'issues'].forEach(id => $(id).addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) requestInspect(b.dataset.id); }));
+  ['rows', 'wall', 'issues'].forEach(id => $(id).addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) openInspect(b.dataset.id); }));
 
   $('i-back').addEventListener('click', backFromOverlay);
   $('d-back').addEventListener('click', backFromOverlay);
@@ -719,28 +784,24 @@ function bind(){
   });
   $('i-save').addEventListener('click', save);
 
-  $('name-btn').addEventListener('click', () => askName(false));
-  $('n-save').addEventListener('click', () => {
-    const v = $('n-input').value.trim();
-    if (!v) { toast('اكتب اسمك أولًا'); return; }
-    inspector = v; localStorage.setItem('fe_name', v);
-    $('name-btn').textContent = v; $('s-name').hidden = true;
-    if (pendingDeep) { const id = pendingDeep; pendingDeep = null; openInspect(id); }
+  $('name-btn').addEventListener('click', () => { if (!me) return; $('ac-name').textContent = me.name; $('ac-email').textContent = me.email; $('s-acct').hidden = false; });
+  $('ac-close').addEventListener('click', () => { $('s-acct').hidden = true; });
+  $('ac-out').addEventListener('click', logout);
+  $('a-out').addEventListener('click', logout);
+  $('a-seg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    authMode = b.dataset.am;
+    document.querySelectorAll('#a-seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    $('a-go').textContent = authMode === 'in' ? 'دخول' : 'إنشاء الحساب';
+    $('a-pass').autocomplete = authMode === 'in' ? 'current-password' : 'new-password';
+    $('a-err').hidden = true;
   });
-  $('n-cancel').addEventListener('click', () => { $('s-name').hidden = true; });
-  $('n-input').addEventListener('keydown', e => { if (e.key === 'Enter') $('n-save').click(); });
-
-  $('login-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    if (!sb) return;
-    $('lg-btn').disabled = true; $('lg-err').hidden = true;
-    const { error } = await sb.auth.signInWithPassword({ email: $('lg-email').value.trim(), password: $('lg-pass').value });
-    $('lg-btn').disabled = false;
-    if (error) { $('lg-err').hidden = false; $('lg-err').textContent = /invalid/i.test(error.message) ? 'البريد الإلكتروني أو كلمة السر غير صحيحة.' : 'تعذر تسجيل الدخول: ' + error.message; return; }
-    if (!(await checkManager())) { await sb.auth.signOut(); $('lg-err').hidden = false; $('lg-err').textContent = 'هذا الحساب ليس حساب مدير.'; return; }
-    $('lg-pass').value = ''; enterReview();
-  });
-  $('logout-btn').addEventListener('click', async () => { await sb.auth.signOut(); isMgr = false; enterReview(); });
+  $('a-go').addEventListener('click', doAuth);
+  $('a-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doAuth(); });
+  $('j-go').addEventListener('click', doJoin);
+  $('w-refresh').addEventListener('click', async () => { const { data: { session } } = await sb.auth.getSession(); if (session) afterAuth(session); else showAuthPanel('login'); });
+  $('req-list').addEventListener('click', e => { const b = e.target.closest('[data-sact]'); if (b) staffAction(b.closest('.srow').dataset.email, b.dataset.sact); });
+  $('team-list').addEventListener('click', e => { const b = e.target.closest('[data-sact]'); if (b) staffAction(b.closest('.srow').dataset.email, b.dataset.sact); });
   $('rv-seg').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     rvFilter = b.dataset.rf;
@@ -750,30 +811,109 @@ function bind(){
   $('rv-list').addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) decide(b.closest('.rcard'), b.dataset.act); });
   $('exp-btn').addEventListener('click', exportCsv);
 
-  window.addEventListener('online', async () => { await flushQueue(); loadMonth(); });
-  document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible') { await flushQueue(); if (tab !== 'review') loadMonth(); } });
+  window.addEventListener('online', async () => { if (!me) return; await flushQueue(); loadMonth(); });
+  document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && me) { await flushQueue(); if (tab !== 'review') loadMonth(); } });
 }
-function askName(required){
-  $('n-input').value = inspector; $('n-cancel').hidden = required || !inspector;
-  $('s-name').hidden = false; setTimeout(() => $('n-input').focus(), 50);
+/* ---------- تسجيل الدخول ---------- */
+let authMode = 'in';
+function showAuth(){ $('s-auth').hidden = false; }
+function showAuthPanel(p){
+  showAuth();
+  $('a-login').hidden = p !== 'login'; $('a-join').hidden = p !== 'join'; $('a-wait').hidden = p !== 'wait';
+  $('a-out').hidden = p === 'login';
+  $('a-sub').textContent = p === 'login' ? 'سجّل دخولك للمتابعة.' : p === 'join' ? 'خطوة أخيرة لطلب الانضمام.' : 'حسابك تحت المراجعة.';
 }
-function requestInspect(id){
-  if (!inspector) { pendingDeep = id; askName(true); return; }
-  openInspect(id);
+const authErr = m => /invalid login|invalid credentials/i.test(m) ? 'البريد أو كلمة السر غير صحيحة.'
+  : /already (been )?registered|already exists/i.test(m) ? 'الحساب موجود بالفعل. اختر «دخول».'
+  : /at least|weak/i.test(m) ? 'كلمة السر لازم تكون 6 حروف على الأقل.'
+  : /rate limit|too many/i.test(m) ? 'محاولات كتير. جرّب بعد شوية.'
+  : /valid email|invalid email/i.test(m) ? 'اكتب بريد إلكتروني صحيح.'
+  : /confirm/i.test(m) ? 'الحساب محتاج تأكيد من البريد.'
+  : isNetErr({ message: m }) ? 'تعذر الاتصال بالإنترنت.' : m;
+async function doAuth(){
+  if (!sb) { $('a-err').hidden = false; $('a-err').textContent = 'لا يوجد اتصال بالخدمة. افتح التطبيق وأنت متصل بالإنترنت.'; return; }
+  const email = $('a-email').value.trim().toLowerCase(), password = $('a-pass').value;
+  const err = m => { $('a-err').hidden = false; $('a-err').textContent = m; $('a-go').disabled = false; };
+  $('a-err').hidden = true;
+  if (!email || !password) return err('اكتب البريد وكلمة السر.');
+  $('a-go').disabled = true;
+  try {
+    let res;
+    if (authMode === 'in') res = await sb.auth.signInWithPassword({ email, password });
+    else {
+      if (password.length < 6) return err('كلمة السر لازم تكون 6 حروف على الأقل.');
+      res = await sb.auth.signUp({ email, password });
+    }
+    if (res.error) return err(authErr(res.error.message || ''));
+    const session = res.data && res.data.session;
+    if (!session) return err('الحساب محتاج تأكيد من البريد الإلكتروني. اطلب من المدير إيقاف خيار التأكيد.');
+    $('a-pass').value = '';
+    $('a-go').disabled = false;
+    await afterAuth(session);
+  } catch(e){ err(authErr(String(e && e.message || e))); }
+}
+async function doJoin(){
+  const name = $('j-name').value.trim(), code = $('j-code').value.trim();
+  const err = m => { $('j-err').hidden = false; $('j-err').textContent = m; $('j-go').disabled = false; };
+  $('j-err').hidden = true;
+  if (!name) return err('اكتب اسمك.');
+  if (!code) return err('اكتب كود الانضمام.');
+  $('j-go').disabled = true;
+  const { error } = await sb.rpc('request_access', { p_name: name, p_code: code });
+  if (error) return err(/bad_code/i.test(error.message) ? 'كود الانضمام غير صحيح.' : authErr(error.message || ''));
+  $('j-go').disabled = false;
+  showAuthPanel('wait');
+}
+function cachedProfile(email){ try { const c = JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null'); return c && (!email || c.email === email) ? c : null; } catch(e){ return null; } }
+async function afterAuth(session){
+  const email = String(session.user.email || '').toLowerCase();
+  const { data, error } = await sb.from('staff').select('name,approved,is_manager').eq('email', email).maybeSingle();
+  let prof = data;
+  if (error) {
+    const c = cachedProfile(email);
+    if (isNetErr(error) && c && c.approved) prof = { name: c.name, approved: true, is_manager: c.isMgr };
+    else { showAuthPanel('login'); $('a-err').hidden = false; $('a-err').textContent = isNetErr(error) ? 'تعذر الاتصال بالإنترنت.' : 'تعذر التحقق من الحساب: ' + (error.message || ''); return; }
+  }
+  if (!prof) { $('j-name').value = (session.user.user_metadata && session.user.user_metadata.name) || ''; showAuthPanel('join'); return; }
+  if (!prof.approved) { showAuthPanel('wait'); return; }
+  me = { email, name: prof.name, isMgr: !!prof.is_manager };
+  try { localStorage.setItem(PROFILE_KEY, JSON.stringify({ ...me, approved: true })); } catch(e){}
+  startApp();
+}
+async function logout(){
+  try { if (sb) await sb.auth.signOut(); } catch(e){}
+  try { localStorage.removeItem(PROFILE_KEY); } catch(e){}
+  location.reload();
+}
+function startApp(){
+  $('s-auth').hidden = true;
+  $('name-btn').textContent = me.name;
+  document.querySelector('nav.tabs [data-tab="review"]').hidden = !me.isMgr;
+  renderAll();
+  if (me.isMgr) loadStaff();
+  if (sb) { flushQueue().then(loadMonth); }
+  if (wantId) { const id = wantId; wantId = ''; if (BY_ID[id]) openInspect(id); else toast('هذا الكود غير موجود في القائمة'); }
 }
 
 /* ---------- البداية ---------- */
 (async function init(){
   bind();
-  $('name-btn').textContent = inspector || 'اكتب اسمك';
   renderAll();
   const p = new URLSearchParams(location.search);
   let want = (p.get('id') || '').trim().toUpperCase();
   if (/^\d+$/.test(want)) want = 'FE-' + want.padStart(3, '0');
   if (p.has('id')) history.replaceState(null, '', location.pathname);
-  if (!inspector) askName(true);
-  if (want) { if (BY_ID[want]) { if (inspector) openInspect(want); else pendingDeep = want; } else toast('هذا الكود غير موجود في القائمة'); }
-  if (sb) { await flushQueue(); await loadMonth(); }
+  wantId = want;
+  if (!sb) {
+    const c = cachedProfile();
+    if (c && c.approved && !navigator.onLine) { me = { email: c.email, name: c.name, isMgr: !!c.isMgr }; startApp(); return; }
+    showAuthPanel('login'); return;
+  }
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) { await afterAuth(session); return; }
+  const c = cachedProfile();
+  if (!navigator.onLine && c && c.approved) { me = { email: c.email, name: c.name, isMgr: !!c.isMgr }; startApp(); return; }
+  showAuthPanel('login');
 })();
 </script>
 </body>
