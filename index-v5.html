@@ -741,14 +741,24 @@ async function exportCsv(){
   const urlOf = await signed(data.map(r => r.photo_url), 604800);
   const cell = v => { let s = String(v ?? ''); if (/^[=+\-@]/.test(s)) s = "'" + s; return `"${s.replace(/"/g, '""')}"`; };
   const head = ['الكود','نوع المعدة','المصنع','القسم','المكان','الوصف','تاريخ الفحص','الفاحص','النتيجة','الحالة العامة','الضغط','الخرطوم','مسمار الأمان','بنود غير مطابقة','ملاحظات','حالة المراجعة','ملاحظة المراجعة','رابط الصورة'];
-  const lines = [head.map(cell).join(',')].concat(data.map(r => {
+  const byKind = {};
+  data.forEach(r => {
     const x = BY_ID[r.ext_id] || {};
-    const badList = Array.isArray(r.checks) ? r.checks.filter(c => c.a !== 'جيد').map(c => c.q).join(' | ') : '';
-    return [r.ext_id, KIND_LABEL[x.kind] || '', x.plant, x.department, x.location, `${x.type || ''} ${x.weight || ''}`.trim(), r.inspect_date, r.inspector, resultOf(r), r.condition, r.pressure, r.hose, r.pin, badList, r.notes, LABEL[r.status], r.review_note, urlOf(r.photo_url)].map(cell).join(',');
-  }));
-  const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `فحص-المعدات-${m}.csv`;
-  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    const k = KIND_LABEL[x.kind] || 'أخرى';
+    (byKind[k] = byKind[k] || []).push(r);
+  });
+  for (const [kindLabel, rows] of Object.entries(byKind)) {
+    const lines = [head.map(cell).join(',')].concat(rows.map(r => {
+      const x = BY_ID[r.ext_id] || {};
+      const badList = Array.isArray(r.checks) ? r.checks.filter(c => c.a !== 'جيد').map(c => c.q).join(' | ') : '';
+      return [r.ext_id, KIND_LABEL[x.kind] || '', x.plant, x.department, x.location, `${x.type || ''} ${x.weight || ''}`.trim(), r.inspect_date, r.inspector, resultOf(r), r.condition, r.pressure, r.hose, r.pin, badList, r.notes, LABEL[r.status], r.review_note, urlOf(r.photo_url)].map(cell).join(',');
+    }));
+    const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `فحص-${kindLabel}-${m}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    await new Promise(res => setTimeout(res, 300));
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
 }
 
 /* ---------- الأحداث ---------- */
