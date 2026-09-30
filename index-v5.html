@@ -165,6 +165,9 @@ nav.tabs button{position:relative}
 .nbadge{position:absolute;top:4px;inset-inline-end:calc(50% - 22px);background:var(--red);color:#fff;border-radius:999px;font-size:12px;font-weight:700;min-width:20px;height:20px;display:grid;place-items:center;padding:0 5px}
 details.team summary{cursor:pointer;font-weight:700;padding:6px 0}
 
+
+.dchart{display:flex;flex-direction:column;gap:10px}.drow{display:grid;grid-template-columns:125px 1fr 48px;gap:8px;align-items:center}.dlabel{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dtrack{height:12px;background:#E6E9ED;border-radius:99px;overflow:hidden}.dfill{height:100%;background:var(--red);border-radius:99px}.dnum{text-align:end;font-weight:700}.dissue{padding:10px 0;border-top:1px solid var(--line)}.dissue:first-child{border-top:0}.dmuted{color:var(--muted);font-size:13px}
+
 /* bottom nav */
 nav.tabs{position:fixed;inset-inline:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px);z-index:10}
 nav.tabs button{flex:1;padding:8px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:13px;color:var(--muted);min-height:58px}
@@ -236,6 +239,32 @@ nav.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1
     </div>
   </section>
 
+  <!-- لوحة التحكم -->
+  <section id="v-dashboard" hidden>
+    <div class="panel">
+      <h2>لوحة تحكم الفحص — الشهر الحالي</h2>
+      <div class="progress-row"><span>نسبة إتمام الفحص</span><b id="d-rate">0%</b></div>
+      <div class="bar"><i id="d-bar"></i></div>
+      <div class="kpis" id="d-kpis"></div>
+    </div>
+    <div class="panel">
+      <h2>حالة الفحوصات</h2>
+      <div id="d-status-chart" class="dchart"></div>
+    </div>
+    <div class="panel">
+      <h2>الفحص حسب نوع المعدة</h2>
+      <div id="d-kind-chart" class="dchart"></div>
+    </div>
+    <div class="panel">
+      <h2>الفحص حسب القسم</h2>
+      <div id="d-dept-chart" class="dchart"></div>
+    </div>
+    <div class="panel">
+      <h2>الملاحظات والمعدات التي تحتاج متابعة</h2>
+      <div id="d-issues"></div>
+    </div>
+  </section>
+
   <!-- المراجعة -->
   <section id="v-review" hidden>
     <div id="rv-main" hidden>
@@ -253,7 +282,7 @@ nav.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1
       <div class="panel">
         <h2>تصدير لملف Excel</h2>
         <label class="f">الشهر<input id="exp-month" class="inp" type="month"></label>
-        <div class="actions"><button class="btn ghost grow" id="exp-btn" type="button">تنزيل الفحوصات (CSV)</button></div>
+        <div class="actions"><button class="btn ghost grow" id="exp-btn" type="button">تنزيل الفحوصات (Excel)</button></div>
       </div>
       <div class="panel"><details class="team"><summary>الفريق المسموح له بالدخول</summary><div id="team-list"></div></details></div>
     </div>
@@ -265,6 +294,8 @@ nav.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1
     <svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>الفحص</button>
   <button type="button" data-tab="wall">
     <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>المتابعة</button>
+  <button type="button" data-tab="dashboard">
+    <svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="M8 16v-4M12 16V8M16 16v-7M20 16v-3"/></svg>لوحة التحكم</button>
   <button type="button" data-tab="review">
     <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>المراجعة<span id="rv-badge" class="nbadge" hidden></span></button>
 </nav>
@@ -343,9 +374,12 @@ nav.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1
 <div id="toast" class="toast" role="status" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ============ الإعدادات: الصق هنا بيانات مشروع Supabase ============ */
 const SUPABASE_URL = "https://ppivgwnasjwdquyxmqhm.supabase.co";
+const OWNER_EMAIL = "etmanmohammad01@gmail.com";
+const FULL_ACCESS_REVIEWERS = new Set([OWNER_EMAIL, "ma.hassan@elsewedy.com", "a.hany@elsewedy.com", "ahmed.afifi@elsewedy.com"]);
 const SUPABASE_KEY = "sb_publishable_KALKJz_NqFQnXBnfSVLchw_4CLBWF6n";
 /* ================================================================== */
 
@@ -468,7 +502,21 @@ function renderFilters(){
   $('kind-chips').innerHTML = [['all', 'كل الأنواع'], ...KINDS]
     .map(([k, t]) => `<button type="button" class="fchip" data-kind="${k}" aria-pressed="${kind === k}">${t} ${inSel(plant, k).length}</button>`).join('');
 }
-function renderAll(){ renderFilters(); renderList(); renderWall(); updateQueueBadge(); }
+function renderDashboard(){
+  const sel=inSel(), total=sel.length, c=counts(sel), done=total-c.none, rate=total?Math.round(done/total*100):0;
+  $('d-rate').textContent=rate+'%'; $('d-bar').style.width=rate+'%';
+  $('d-kpis').innerHTML=[['total','إجمالي المعدات'],['done','تم فحصها'],['none','لم تُفحص'],['pending','بانتظار المراجعة'],['approved','معتمد'],['rejected','يحتاج تصحيح']].map(([k,t])=>`<div class="kpi"><b>${k==='total'?total:k==='done'?done:c[k]}</b><span>${t}</span></div>`).join('');
+  const chart=(items)=>{const max=Math.max(1,...items.map(x=>x[1]));return items.length?items.map(([l,n])=>`<div class="drow"><span class="dlabel">${esc(l)}</span><span class="dtrack"><i class="dfill" style="width:${n/max*100}%"></i></span><b class="dnum">${n}</b></div>`).join(''):'<div class="empty">لا توجد بيانات</div>';};
+  $('d-status-chart').innerHTML=chart([['لم تُفحص',c.none],['بانتظار المراجعة',c.pending],['معتمد',c.approved],['يحتاج تصحيح',c.rejected]]);
+  const kinds={}; sel.forEach(x=>{const k=KIND_LABEL[x.kind]||x.kind||'غير محدد'; kinds[k]=(kinds[k]||0)+(stateOf(x.id)!=='none'?1:0)});
+  $('d-kind-chart').innerHTML=chart(Object.entries(kinds).sort((a,b)=>b[1]-a[1]));
+  const deps={}; sel.forEach(x=>{const k=x.department||'غير محدد'; deps[k]=(deps[k]||0)+(stateOf(x.id)!=='none'?1:0)});
+  $('d-dept-chart').innerHTML=chart(Object.entries(deps).sort((a,b)=>b[1]-a[1]).slice(0,12));
+  const issues=sel.filter(x=>{const r=byId[x.id];return r&&(stateOf(x.id)==='rejected'||r.notes)}).slice(0,15);
+  $('d-issues').innerHTML=issues.length?issues.map(x=>{const r=byId[x.id]||{};return `<div class="dissue"><bdi class="code">${esc(x.id)}</bdi> — ${esc(x.location||'')}<div class="dmuted">${esc(r.notes||r.review_note||'يحتاج متابعة')}</div></div>`}).join(''):'<div class="empty">لا توجد ملاحظات مسجلة هذا الشهر.</div>';
+}
+
+function renderAll(){ renderFilters(); renderList(); renderWall(); renderDashboard(); updateQueueBadge(); }
 
 function fillDepts(){
   const keep = $('dept').value;
@@ -541,12 +589,12 @@ function renderWall(){
 /* ---------- التنقل ---------- */
 function showTab(t){
   tab = t;
-  ['list','wall','review'].forEach(k => $('v-' + k).hidden = k !== t);
+  ['list','wall','dashboard','review'].forEach(k => $('v-' + k).hidden = k !== t);
   document.querySelectorAll('nav.tabs button').forEach(b => b.toggleAttribute('aria-current', b.dataset.tab === t) || b.removeAttribute('aria-current'));
   document.querySelectorAll('nav.tabs button').forEach(b => { if (b.dataset.tab === t) b.setAttribute('aria-current', 'page'); });
   $('filters').hidden = false;
   window.scrollTo(0, 0);
-  if (t === 'review') enterReview(); else loadMonth();
+  if (t === 'review') enterReview(); else { loadMonth(); if (t === 'dashboard') renderDashboard(); }
 }
 function closeOverlays(){ ['s-inspect','s-done'].forEach(id => $(id).hidden = true); }
 function backFromOverlay(){ if (history.state && history.state.ov) history.back(); else closeOverlays(); }
@@ -674,14 +722,14 @@ async function enterReview(){
   loadReview();
 }
 function staffRow(s, pending){
-  return `<div class="srow" data-email="${esc(s.email)}"><div><b>${esc(s.name)}</b>${s.is_manager ? ' <span class="kpill">مدير</span>' : ''}<div class="muted" style="direction:ltr;text-align:start">${esc(s.email)}</div></div>` +
+  return `<div class="srow" data-email="${esc(s.email)}"><div><b>${esc(s.name)}</b>${s.is_manager ? ' <span class="kpill">مدير</span>' : ''}${(!s.is_manager && s.assigned_manager) ? ` <span class="kpill" style="background:#eef;color:#335">مراجعه: ${esc(s.assigned_manager)}</span>` : ''}<div class="muted" style="direction:ltr;text-align:start">${esc(s.email)}</div></div>` +
     (pending ? '<div class="actions"><button class="btn ok" data-sact="approve" type="button">قبول</button><button class="btn ghost" data-sact="reject" type="button">رفض</button></div>'
              : (s.is_manager ? '' : '<button class="btn ghost" data-sact="suspend" type="button">إيقاف</button>')) + '</div>';
 }
 function setBadge(n){ const b = $('rv-badge'); b.hidden = !n; b.textContent = n || ''; }
 async function loadStaff(){
   if (!sb || !me || !me.isMgr) return;
-  const { data, error } = await sb.from('staff').select('email,name,approved,is_manager,created_at').order('created_at', { ascending: false });
+  const { data, error } = await sb.from('staff').select('email,name,approved,is_manager,assigned_manager,created_at').order('created_at', { ascending: false });
   if (error) return;
   const pend = data.filter(s => !s.approved), team = data.filter(s => s.approved);
   $('req-panel').hidden = !pend.length;
@@ -702,6 +750,12 @@ async function loadReview(){
   $('rv-list').innerHTML = '<div class="empty">جارٍ التحميل…</div>';
   let { data, error } = await sb.from('inspections').select('*').eq('status', rvFilter).order('created_at', { ascending: false }).limit(600);
   if (error) { $('rv-list').innerHTML = '<div class="empty">تعذر تحميل البيانات.</div>'; return; }
+  if (!FULL_ACCESS_REVIEWERS.has(me.email)) {
+    const { data: staffList } = await sb.from('staff').select('name,assigned_manager');
+    const mgrOf = {};
+    (staffList || []).forEach(s => { mgrOf[s.name] = s.assigned_manager || null; });
+    data = data.filter(r => { const am = mgrOf[r.inspector]; return !am || am === me.email; });
+  }
   data = data.filter(r => { const x = BY_ID[r.ext_id]; return x ? ((plant === 'all' || x.plant === plant) && (kind === 'all' || x.kind === kind)) : (plant === 'all' && kind === 'all'); });
   const urlOf = await signed(data.map(r => r.photo_url), 3600);
   if (!data.length) { $('rv-list').innerHTML = '<div class="empty">لا توجد فحوصات في هذه القائمة.</div>'; return; }
@@ -739,26 +793,30 @@ async function exportCsv(){
   if (error) { toast('تعذر تحميل البيانات'); return; }
   if (!data.length) { toast('لا توجد فحوصات في هذا الشهر'); return; }
   const urlOf = await signed(data.map(r => r.photo_url), 604800);
-  const cell = v => { let s = String(v ?? ''); if (/^[=+\-@]/.test(s)) s = "'" + s; return `"${s.replace(/"/g, '""')}"`; };
   const head = ['الكود','نوع المعدة','المصنع','القسم','المكان','الوصف','تاريخ الفحص','الفاحص','النتيجة','الحالة العامة','الضغط','الخرطوم','مسمار الأمان','بنود غير مطابقة','ملاحظات','حالة المراجعة','ملاحظة المراجعة','رابط الصورة'];
-  const byKind = {};
-  data.forEach(r => {
+  const rows = data.map(r => {
     const x = BY_ID[r.ext_id] || {};
-    const k = KIND_LABEL[x.kind] || 'أخرى';
-    (byKind[k] = byKind[k] || []).push(r);
+    const badList = Array.isArray(r.checks) ? r.checks.filter(c => c.a !== 'جيد').map(c => c.q).join(' | ') : '';
+    return [r.ext_id, KIND_LABEL[x.kind] || '', x.plant, x.department, x.location, `${x.type || ''} ${x.weight || ''}`.trim(), r.inspect_date, r.inspector, resultOf(r), r.condition, r.pressure, r.hose, r.pin, badList, r.notes, LABEL[r.status], r.review_note, urlOf(r.photo_url) || ''];
   });
-  for (const [kindLabel, rows] of Object.entries(byKind)) {
-    const lines = [head.map(cell).join(',')].concat(rows.map(r => {
-      const x = BY_ID[r.ext_id] || {};
-      const badList = Array.isArray(r.checks) ? r.checks.filter(c => c.a !== 'جيد').map(c => c.q).join(' | ') : '';
-      return [r.ext_id, KIND_LABEL[x.kind] || '', x.plant, x.department, x.location, `${x.type || ''} ${x.weight || ''}`.trim(), r.inspect_date, r.inspector, resultOf(r), r.condition, r.pressure, r.hose, r.pin, badList, r.notes, LABEL[r.status], r.review_note, urlOf(r.photo_url)].map(cell).join(',');
-    }));
-    const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `فحص-${kindLabel}-${m}.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
-    await new Promise(res => setTimeout(res, 300));
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  }
+  const aoa = [head, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const photoCol = head.length - 1;
+  rows.forEach((row, i) => {
+    const link = row[photoCol];
+    if (link) {
+      const addr = XLSX.utils.encode_cell({ r: i + 1, c: photoCol });
+      ws[addr].l = { Target: link, Tooltip: 'فتح الصورة' };
+    }
+  });
+  ws['!cols'] = head.map((h, c) => {
+    const maxLen = Math.max(h.length, ...rows.map(r => String(r[c] ?? '').length));
+    return { wch: Math.min(Math.max(maxLen + 2, 10), 60) };
+  });
+  ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: head.length - 1 } }) };
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'فحوصات');
+  XLSX.writeFile(wb, `فحص-المعدات-${m}.xlsx`);
 }
 
 /* ---------- الأحداث ---------- */
